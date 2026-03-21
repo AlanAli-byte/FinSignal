@@ -132,17 +132,28 @@ def show():
             import tensorflow as tf
             tf.random.set_seed(42)
             from tensorflow.keras import layers, models
-            model = models.Sequential([
-                layers.Input(shape=X.shape[1:]),
-                layers.Conv2D(32,(3,3),activation='relu',padding='same'),
-                layers.BatchNormalization(), layers.MaxPooling2D((2,2)),
-                layers.Conv2D(64,(3,3),activation='relu',padding='same'),
-                layers.BatchNormalization(), layers.MaxPooling2D((2,2)),
-                layers.Conv2D(128,(3,3),activation='relu',padding='same'),
-                layers.GlobalAveragePooling2D(),
-                layers.Dense(128,activation='relu'), layers.Dropout(dropout),
-                layers.Dense(1)
-            ])
+
+            # Determine architecture based on input spatial size
+            # If input is too small for 2x MaxPooling, use a simpler architecture
+            h, w = X.shape[1], X.shape[2]
+            use_pooling = (h >= 4 and w >= 4)
+
+            arch = [layers.Input(shape=X.shape[1:])]
+            arch.append(layers.Conv2D(32,(3,3),activation='relu',padding='same'))
+            arch.append(layers.BatchNormalization())
+            if use_pooling:
+                arch.append(layers.MaxPooling2D((2,2)))
+            arch.append(layers.Conv2D(64,(3,3),activation='relu',padding='same'))
+            arch.append(layers.BatchNormalization())
+            if use_pooling:
+                arch.append(layers.MaxPooling2D((2,2)))
+            arch.append(layers.Conv2D(128,(3,3),activation='relu',padding='same'))
+            arch.append(layers.GlobalAveragePooling2D())
+            arch.append(layers.Dense(128,activation='relu'))
+            arch.append(layers.Dropout(dropout))
+            arch.append(layers.Dense(1))
+
+            model = models.Sequential(arch)
             model.compile(optimizer='adam', loss='mse', metrics=['mae'])
 
             h_loss, h_val = [], []
